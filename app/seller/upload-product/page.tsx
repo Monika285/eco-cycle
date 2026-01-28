@@ -1,8 +1,8 @@
 "use client"
 
-import React from "react"
+export const dynamic = "force-dynamic"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Card } from "@/components/ui/card"
@@ -21,10 +21,14 @@ export default function UploadProduct() {
   const router = useRouter()
   const { user } = useAuth()
   const { addProduct } = useSellerProducts()
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [images, setImages] = useState<string[]>([])
+
+  const [seller, setSeller] = useState<any>(null)
+  const [sellerLoading, setSellerLoading] = useState(true)
 
   const [formData, setFormData] = useState({
     title: "",
@@ -41,8 +45,11 @@ export default function UploadProduct() {
     certifications: [""],
   })
 
-  const sellerProfile = localStorage.getItem("echocycle_seller_profile")
-  const seller = sellerProfile ? JSON.parse(sellerProfile) : null
+  useEffect(() => {
+    const profile = localStorage.getItem("echocycle_seller_profile")
+    setSeller(profile ? JSON.parse(profile) : null)
+    setSellerLoading(false)
+  }, [])
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -57,14 +64,14 @@ export default function UploadProduct() {
       const reader = new FileReader()
       reader.onload = (event) => {
         const base64 = event.target?.result as string
-        setImages([...images, base64])
+        setImages((prev) => [...prev, base64])
       }
       reader.readAsDataURL(file)
     })
   }
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index))
+    setImages((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,10 +95,13 @@ export default function UploadProduct() {
       const newProduct = {
         sellerId: user?.id || "",
         title: formData.title,
-        category: formData.category as "Plastics" | "Textiles" | "Electronics" | "Wood",
+        category: formData.category,
         quantity: `${formData.quantity}${formData.unit}`,
         location: seller.city,
-        price: formData.listingType === "sell" ? `$${formData.price}/${formData.unit}` : "Donating",
+        price:
+          formData.listingType === "sell"
+            ? `$${formData.price}/${formData.unit}`
+            : "Donating",
         listingType: formData.listingType,
         condition: formData.condition,
         description: formData.description,
@@ -113,7 +123,7 @@ export default function UploadProduct() {
         },
       }
 
-      const productId = await addProduct(newProduct)
+      await addProduct(newProduct)
       setSuccess("Product uploaded successfully!")
 
       setTimeout(() => {
@@ -130,32 +140,30 @@ export default function UploadProduct() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
-          <p className="text-center text-gray-600">Please sign in first</p>
+        <main className="py-12 text-center text-gray-600">
+          Please sign in first
         </main>
         <Footer />
       </div>
     )
   }
 
-  if (!seller) {
+  if (!seller && !sellerLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center py-12">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Complete Seller Setup First</h1>
-            <p className="text-gray-600 mb-8">Set up your seller profile before uploading products</p>
-            <Link href="/seller/setup">
-              <Button className="bg-emerald-600 hover:bg-emerald-700">Complete Setup</Button>
-            </Link>
-          </div>
+        <main className="py-12 text-center">
+          <h1 className="text-3xl font-bold mb-4">Complete Seller Setup First</h1>
+          <Link href="/seller/setup">
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              Complete Setup
+            </Button>
+          </Link>
         </main>
         <Footer />
       </div>
     )
   }
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
